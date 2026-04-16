@@ -1,0 +1,10 @@
+fastapi>=0.115.0
+uvicorn>=0.30.0
+sse-starlette>=2.0.0
+pydantic-settings>=2.0.0
+jieba>=0.42.1
+yt-dlp>=2023.1.1
+duckduckgo-search>=4.0.0
+pysrt>=1.1.2
+bcut-asr @ git+https://github.com/SocialSisterYi/bcut-asr.git
+openai-whisper>=20231117
