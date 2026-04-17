@@ -1,6 +1,6 @@
 import React from 'react'
 import { Checkbox, Tag } from 'antd'
-import { YoutubeFilled, LinkOutlined } from '@ant-design/icons'
+import { YoutubeFilled, LinkOutlined, PlayCircleFilled } from '@ant-design/icons'
 import type { MaterialItem } from '../types/pipeline'
 
 interface Props {
@@ -9,8 +9,20 @@ interface Props {
   onToggle?: (id: number) => void
 }
 
+const platformIcon = (platform: string) => {
+  if (platform === 'YouTube') return <YoutubeFilled style={{ color: '#ff4444', fontSize: '16px' }} />
+  if (platform === 'Bilibili') return <PlayCircleFilled style={{ color: '#fb7299', fontSize: '16px' }} />
+  return <LinkOutlined style={{ color: '#888', fontSize: '16px' }} />
+}
+
+const platformTagColor = (platform: string): string => {
+  if (platform === 'YouTube') return 'red'
+  if (platform === 'Bilibili') return 'magenta'
+  return 'default'
+}
+
 const MaterialCard: React.FC<Props> = ({ item, selected, onToggle }) => {
-  const isYouTube = item.platform === 'YouTube'
+  const downloadable = item.id != null
 
   return (
     <div
@@ -23,7 +35,7 @@ const MaterialCard: React.FC<Props> = ({ item, selected, onToggle }) => {
         borderColor: selected ? '#4facfe' : '#2d2d2d',
       }}
     >
-      {isYouTube && item.id != null && (
+      {downloadable && (
         <Checkbox
           checked={selected}
           onChange={() => onToggle?.(item.id!)}
@@ -33,12 +45,8 @@ const MaterialCard: React.FC<Props> = ({ item, selected, onToggle }) => {
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-          {isYouTube ? (
-            <YoutubeFilled style={{ color: '#ff4444', fontSize: '16px' }} />
-          ) : (
-            <span style={{ fontSize: '14px' }}>🎵</span>
-          )}
-          {isYouTube && item.id != null && (
+          {platformIcon(item.platform)}
+          {downloadable && (
             <Tag
               color="blue"
               style={{
@@ -52,7 +60,7 @@ const MaterialCard: React.FC<Props> = ({ item, selected, onToggle }) => {
               ID: {item.id}
             </Tag>
           )}
-          <Tag style={{ margin: 0 }}>{item.platform}</Tag>
+          <Tag color={platformTagColor(item.platform)} style={{ margin: 0 }}>{item.platform}</Tag>
           {item.duration && (
             <span style={{ color: '#888', fontSize: '12px' }}>{item.duration}</span>
           )}

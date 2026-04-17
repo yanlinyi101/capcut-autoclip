@@ -5,6 +5,7 @@ import {
   FileSearchOutlined,
   SearchOutlined,
   DownloadOutlined,
+  ScissorOutlined,
   CheckCircleFilled,
 } from '@ant-design/icons'
 
@@ -13,6 +14,7 @@ const steps = [
   { label: '提取关键词', icon: <FileSearchOutlined />, path: '/extract' },
   { label: '搜索素材', icon: <SearchOutlined />, path: '/search' },
   { label: '下载素材', icon: <DownloadOutlined />, path: '/download' },
+  { label: '自动剪辑', icon: <ScissorOutlined />, path: '/edit' },
 ]
 
 interface Props {

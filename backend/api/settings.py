@@ -16,6 +16,11 @@ class SettingsModel(BaseModel):
     whisper_model: str = "base"
     language: str = "zh"
     ffmpeg_path: str = "ffmpeg"
+    deepseek_api_key: str = ""
+    deepseek_base_url: str = "https://api.deepseek.com"
+    deepseek_model: str = "deepseek-chat"
+    llm_enabled: bool = True
+    proxy_url: str = ""
 
 
 @router.get("/", response_model=SettingsModel)
@@ -30,6 +35,11 @@ async def get_settings():
         whisper_model=settings.whisper_model,
         language=settings.language,
         ffmpeg_path=settings.ffmpeg_path,
+        deepseek_api_key=settings.deepseek_api_key,
+        deepseek_base_url=settings.deepseek_base_url,
+        deepseek_model=settings.deepseek_model,
+        llm_enabled=settings.llm_enabled,
+        proxy_url=settings.proxy_url,
     )
 
 
@@ -44,6 +54,11 @@ async def update_settings(req: SettingsModel):
     settings.whisper_model = req.whisper_model
     settings.language = req.language
     settings.ffmpeg_path = req.ffmpeg_path
+    settings.deepseek_api_key = req.deepseek_api_key
+    settings.deepseek_base_url = req.deepseek_base_url
+    settings.deepseek_model = req.deepseek_model
+    settings.llm_enabled = req.llm_enabled
+    settings.proxy_url = req.proxy_url
 
     _save_persisted(req.model_dump())
 

@@ -1,9 +1,7 @@
 import subprocess
-import time
 import os
 import asyncio
 from typing import AsyncGenerator
-from duckduckgo_search import DDGS
 from backend.core.config import settings
 
 
@@ -34,11 +32,14 @@ def _search_youtube_sync(query: str, limit: int = 3) -> list[dict]:
         cmd = [
             settings.yt_dlp_path,
             f"ytsearch{limit * 2}:{enhanced_query}",
-            "--print", "%(title)s|%(webpage_url)s|%(duration_string)s",
+            "--print", "%(id)s|%(title)s|%(webpage_url)s|%(duration_string)s",
             "--no-playlist",
             "--no-warnings",
             "--ignore-errors",
+            "--socket-timeout", "30",
         ]
+        if settings.proxy_url:
+            cmd += ["--proxy", settings.proxy_url]
 
         env = os.environ.copy()
         env["PYTHONIOENCODING"] = "utf-8"
@@ -57,10 +58,11 @@ def _search_youtube_sync(query: str, limit: int = 3) -> list[dict]:
             lines = result.stdout.strip().split("\n")
             for line in lines:
                 parts = line.split("|")
-                if len(parts) >= 3:
-                    title = parts[0]
-                    url = parts[1]
-                    duration = parts[2]
+                if len(parts) >= 4:
+                    _vid_id = parts[0]
+                    title = parts[1]
+                    url = parts[2]
+                    duration = parts[3]
 
                     title_lower = title.lower()
                     if any(
@@ -84,28 +86,71 @@ def _search_youtube_sync(query: str, limit: int = 3) -> list[dict]:
     return results
 
 
-def _search_douyin_sync(query: str, limit: int = 3) -> list[dict]:
-    """Search Douyin via DuckDuckGo (blocking)."""
+_BILI_UA = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+)
+
+
+def _search_bilibili_sync(query: str, limit: int = 3) -> list[dict]:
+    """Search Bilibili using yt-dlp's bilisearch prefix (bare keywords, no modifiers)."""
     results = []
     try:
-        ddg_query = f'site:douyin.com/video "{query}"'
-        with DDGS() as ddgs:
-            search_results = list(ddgs.text(ddg_query, max_results=10))
-            count = 0
-            for res in search_results:
-                if count >= limit:
-                    break
-                title = res.get("title", "")
-                url = res.get("href", "")
-                keywords = query.split()
-                main_keyword = keywords[0] if keywords else ""
+        cmd = [
+            settings.yt_dlp_path,
+            f"bilisearch{limit}:{query}",
+            "--print", "%(id)s|%(title)s|%(webpage_url)s|%(duration_string)s|%(uploader)s",
+            "--no-warnings",
+            "--ignore-errors",
+            "--socket-timeout", "30",
+            "--user-agent", _BILI_UA,
+            "--add-header", "Referer:https://www.bilibili.com/",
+            "--add-header", "Origin:https://www.bilibili.com",
+        ]
+        if settings.proxy_url:
+            cmd += ["--proxy", settings.proxy_url]
 
-                if main_keyword and main_keyword in title:
+        env = os.environ.copy()
+        env["PYTHONIOENCODING"] = "utf-8"
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+            env=env,
+            timeout=60,
+        )
+
+        # yt-dlp may exit non-zero if some items fail (e.g. bilibili "cheese"
+        # paid courses) but still print valid results; rely on stdout.
+        if result.stdout:
+            seen_urls = set()
+            lines = result.stdout.strip().split("\n")
+            for line in lines:
+                parts = line.split("|")
+                if len(parts) >= 3:
+                    title = parts[1]
+                    url = parts[2]
+                    duration = parts[3] if len(parts) > 3 else None
+                    if not url or url == "NA":
+                        continue
+                    # Dedupe multipart (p01/p02/...) — keep only first page
+                    base = url.split("?p=")[0]
+                    if base in seen_urls:
+                        continue
+                    seen_urls.add(base)
                     results.append(
-                        {"platform": "Douyin", "title": title, "url": url}
+                        {
+                            "platform": "Bilibili",
+                            "title": title,
+                            "url": url,
+                            "duration": duration if duration and duration != "NA" else None,
+                        }
                     )
-                    count += 1
-            time.sleep(1)
+                    if len(results) >= limit:
+                        break
     except Exception:
         pass
     return results
@@ -113,14 +158,27 @@ def _search_douyin_sync(query: str, limit: int = 3) -> list[dict]:
 
 async def search_materials(
     keywords_data: list[dict],
-    max_rows: int = 10,
+    max_rows: int | None = None,
     results_per_platform: int = 3,
+    platforms: list[str] | None = None,
 ) -> AsyncGenerator[dict, None]:
-    """Async generator that yields search progress and result events."""
-    target_rows = keywords_data[:max_rows]
-    global_id = 1
+    """Async generator that yields search progress and result events.
 
-    for i, row in enumerate(target_rows):
+    Processes every row in `keywords_data` (user controls scope via the
+    row-selection UI on the Extract page). `max_rows` is accepted for
+    backward compatibility but ignored.
+    """
+    if platforms is None:
+        platforms = ["youtube", "bilibili"]
+    platforms = [p.lower() for p in platforms]
+    want_yt = "youtube" in platforms
+    want_bili = "bilibili" in platforms
+
+    total_rows = len(keywords_data)
+    global_id = 1
+    query_cache: dict[str, tuple[list[dict], list[dict]]] = {}
+
+    for i, row in enumerate(keywords_data):
         kw_list = row.get("keywords", [])
         kw_str = ", ".join(kw_list) if isinstance(kw_list, list) else str(kw_list)
         search_query = clean_keywords(kw_str)
@@ -128,44 +186,48 @@ async def search_materials(
         if not search_query:
             continue
 
-        # Progress: starting this keyword
-        yield {
-            "type": "progress",
-            "data": {
-                "row_index": i,
-                "total_rows": len(target_rows),
-                "keyword": search_query,
-                "platform": "douyin",
-                "status": "searching",
-            },
-        }
+        cached = search_query in query_cache
 
-        # Search Douyin
-        dy_results = await asyncio.to_thread(
-            _search_douyin_sync, search_query, results_per_platform
-        )
-        dy_items = [
-            {"id": None, "title": r["title"], "url": r["url"], "duration": None, "platform": "Douyin"}
-            for r in dy_results
-        ]
+        yt_raw: list[dict] = []
+        bili_raw: list[dict] = []
 
-        yield {
-            "type": "progress",
-            "data": {
-                "row_index": i,
-                "total_rows": len(target_rows),
-                "keyword": search_query,
-                "platform": "youtube",
-                "status": "searching",
-            },
-        }
+        if cached:
+            yt_raw, bili_raw = query_cache[search_query]
+        else:
+            if want_yt:
+                yield {
+                    "type": "progress",
+                    "data": {
+                        "row_index": i,
+                        "total_rows": total_rows,
+                        "keyword": search_query,
+                        "platform": "youtube",
+                        "status": "searching",
+                    },
+                }
+                yt_raw = await asyncio.to_thread(
+                    _search_youtube_sync, search_query, results_per_platform
+                )
 
-        # Search YouTube
-        yt_results = await asyncio.to_thread(
-            _search_youtube_sync, search_query, results_per_platform
-        )
+            if want_bili:
+                yield {
+                    "type": "progress",
+                    "data": {
+                        "row_index": i,
+                        "total_rows": total_rows,
+                        "keyword": search_query,
+                        "platform": "bilibili",
+                        "status": "searching",
+                    },
+                }
+                bili_raw = await asyncio.to_thread(
+                    _search_bilibili_sync, search_query, results_per_platform
+                )
+
+            query_cache[search_query] = (yt_raw, bili_raw)
+
         yt_items = []
-        for r in yt_results:
+        for r in yt_raw:
             yt_items.append(
                 {
                     "id": global_id,
@@ -173,6 +235,19 @@ async def search_materials(
                     "url": r["url"],
                     "duration": r.get("duration"),
                     "platform": "YouTube",
+                }
+            )
+            global_id += 1
+
+        bili_items = []
+        for r in bili_raw:
+            bili_items.append(
+                {
+                    "id": global_id,
+                    "title": r["title"],
+                    "url": r["url"],
+                    "duration": r.get("duration"),
+                    "platform": "Bilibili",
                 }
             )
             global_id += 1
@@ -185,7 +260,7 @@ async def search_materials(
                 "start_time": row.get("start_time", ""),
                 "original_text": row.get("text", ""),
                 "youtube_results": yt_items,
-                "douyin_results": dy_items,
+                "bilibili_results": bili_items,
             },
         }
 

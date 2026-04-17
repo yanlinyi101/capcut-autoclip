@@ -1,5 +1,5 @@
 import React from 'react'
-import { Button, Tag } from 'antd'
+import { Tag } from 'antd'
 import MaterialCard from './MaterialCard'
 import type { SearchGroupResult } from '../types/pipeline'
 import { usePipelineStore } from '../store/usePipelineStore'
@@ -36,23 +36,10 @@ const MaterialSelector: React.FC<Props> = ({ materials }) => {
             </span>
           </div>
 
-          {group.douyin_results.length > 0 && (
+          {group.youtube_results.length > 0 && (
             <div style={{ marginBottom: '12px' }}>
               <div style={{ color: '#888', fontSize: '12px', fontWeight: 500, marginBottom: '8px', paddingLeft: '4px' }}>
-                抖音精选
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {group.douyin_results.map((item, i) => (
-                  <MaterialCard key={`dy-${i}`} item={item} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {group.youtube_results.length > 0 && (
-            <div>
-              <div style={{ color: '#888', fontSize: '12px', fontWeight: 500, marginBottom: '8px', paddingLeft: '4px' }}>
-                YouTube 精选（可下载）
+                YouTube 精选
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {group.youtube_results.map((item, i) => (
@@ -67,7 +54,25 @@ const MaterialSelector: React.FC<Props> = ({ materials }) => {
             </div>
           )}
 
-          {group.youtube_results.length === 0 && group.douyin_results.length === 0 && (
+          {group.bilibili_results.length > 0 && (
+            <div>
+              <div style={{ color: '#888', fontSize: '12px', fontWeight: 500, marginBottom: '8px', paddingLeft: '4px' }}>
+                Bilibili 精选
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {group.bilibili_results.map((item, i) => (
+                  <MaterialCard
+                    key={`bili-${i}`}
+                    item={item}
+                    selected={item.id != null && selectedMaterialIds.has(item.id)}
+                    onToggle={toggleMaterialSelection}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {group.youtube_results.length === 0 && group.bilibili_results.length === 0 && (
             <div style={{ color: '#666', padding: '16px', textAlign: 'center' }}>
               暂无搜索结果
             </div>

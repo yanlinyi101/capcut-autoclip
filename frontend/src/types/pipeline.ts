@@ -17,6 +17,8 @@ export interface KeywordRow {
   end_time: string
   text: string
   keywords: string[]
+  needs_broll?: boolean
+  broll_reason?: string
 }
 
 export interface ExtractResponse {
@@ -39,13 +41,15 @@ export interface SearchGroupResult {
   start_time: string
   original_text: string
   youtube_results: MaterialItem[]
-  douyin_results: MaterialItem[]
+  bilibili_results: MaterialItem[]
 }
+
+export type Platform = 'youtube' | 'bilibili'
 
 export interface MaterialsResponse {
   materials: SearchGroupResult[]
   total_youtube: number
-  total_douyin: number
+  total_bilibili: number
 }
 
 export interface SearchProgress {
@@ -98,6 +102,11 @@ export interface AppSettings {
   whisper_model: string
   language: string
   ffmpeg_path: string
+  deepseek_api_key: string
+  deepseek_base_url: string
+  deepseek_model: string
+  llm_enabled: boolean
+  proxy_url: string
 }
 
 export interface AsrProgress {
@@ -106,4 +115,66 @@ export interface AsrProgress {
   method?: string
   srt_path?: string
   error?: string
+}
+
+// ------- Edit pipeline -------
+
+export interface Transform {
+  x: number
+  y: number
+  scale: number
+}
+
+export interface BrollSegment {
+  segment_id: string
+  row_index: number | null
+  start: number
+  end: number
+  duration: number
+  text: string
+  keywords: string[]
+  all_keywords: string[]
+  reason: string
+  confidence: number
+}
+
+export interface FrameMeta {
+  material_id: number | null
+  scene_idx: number
+  timestamp: number
+  scene_start: number
+  scene_end: number
+  frame_path: string
+}
+
+export interface PresetInfo {
+  id: string
+  label: string
+  transform: Transform
+}
+
+export interface PlanItem {
+  segment_id: string
+  start: number
+  end: number
+  material_id: number
+  source_offset: number
+  preset: string
+  transform: Transform
+}
+
+export interface OutputClip {
+  segment_id: string
+  clip_path: string
+  clip_rel: string
+  duration: number
+  preset: string
+  transform: Transform
+  timeline_start: number
+  timeline_end: number
+  source_material_id: number | null
+}
+
+export interface KeyframeIndex {
+  [materialId: string]: FrameMeta[]
 }

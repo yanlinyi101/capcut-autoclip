@@ -27,8 +27,19 @@ async def start_search(project_id: str, req: SearchRequest | None = None):
     if not keywords:
         raise HTTPException(status_code=400, detail="请先提取关键词")
 
-    max_rows = req.max_rows if req else 10
+    selected = project.get("selected_row_indices")
+    if selected is not None:
+        sel_set = set(selected)
+        if not sel_set:
+            raise HTTPException(status_code=400, detail="请至少勾选一行关键词")
+        keywords = [k for k in keywords if k.get("index") in sel_set]
+        if not keywords:
+            raise HTTPException(status_code=400, detail="勾选的行与关键词不匹配")
+
     results_per_platform = req.results_per_platform if req else 3
+    platforms = req.platforms if req else ["youtube", "bilibili"]
+    if not platforms:
+        raise HTTPException(status_code=400, detail="请至少选择一个素材平台")
 
     task_id = create_task()
     _search_tasks[project_id] = task_id
@@ -36,7 +47,9 @@ async def start_search(project_id: str, req: SearchRequest | None = None):
     async def run_search():
         all_materials = []
         material_index = {}
-        async for event in search_materials(keywords, max_rows, results_per_platform):
+        async for event in search_materials(
+            keywords, None, results_per_platform, platforms=platforms
+        ):
             push_event(task_id, event)
             if event["type"] == "result":
                 all_materials.append(event["data"])
@@ -45,6 +58,12 @@ async def start_search(project_id: str, req: SearchRequest | None = None):
                         material_index[yt["id"]] = {
                             "url": yt["url"],
                             "title": yt["title"],
+                        }
+                for bili in event["data"].get("bilibili_results", []):
+                    if bili.get("id"):
+                        material_index[bili["id"]] = {
+                            "url": bili["url"],
+                            "title": bili["title"],
                         }
 
         update_project(
@@ -82,10 +101,10 @@ async def get_materials(project_id: str):
 
     materials = project.get("materials", [])
     total_yt = sum(len(m.get("youtube_results", [])) for m in materials)
-    total_dy = sum(len(m.get("douyin_results", [])) for m in materials)
+    total_bili = sum(len(m.get("bilibili_results", [])) for m in materials)
 
     return MaterialsResponse(
         materials=materials,
         total_youtube=total_yt,
-        total_douyin=total_dy,
+        total_bilibili=total_bili,
     )

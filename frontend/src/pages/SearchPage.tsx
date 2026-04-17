@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { Button, message, Spin } from 'antd'
-import { DownloadOutlined } from '@ant-design/icons'
+import { Button, message, Progress, Card } from 'antd'
+import { DownloadOutlined, LoadingOutlined, ExclamationCircleOutlined, ReloadOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import MaterialSelector from '../components/MaterialSelector'
 import { startSearch, getSearchStreamUrl } from '../services/api'
@@ -16,6 +16,7 @@ const SearchPage: React.FC = () => {
     searchStatus,
     searchProgress,
     selectedMaterialIds,
+    selectedPlatforms,
     setSearchStatus,
     setSearchProgress,
     addSearchResult,
@@ -40,7 +41,8 @@ const SearchPage: React.FC = () => {
     if (!projectId) return
     setSearchStatus('running')
     try {
-      await startSearch(projectId)
+      const platforms = Array.from(selectedPlatforms)
+      await startSearch(projectId, 3, platforms)
       setSseUrl(getSearchStreamUrl(projectId))
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail || '启动搜索失败'
@@ -73,7 +75,7 @@ const SearchPage: React.FC = () => {
 
   const handleGoDownload = () => {
     if (selectedMaterialIds.size === 0) {
-      message.warning('请先选择要下载的 YouTube 素材')
+      message.warning('请先选择要下载的素材')
       return
     }
     setCurrentStep(3)
@@ -88,42 +90,64 @@ const SearchPage: React.FC = () => {
         <div>
           <h2 style={{ color: '#fff', fontSize: '20px', margin: 0 }}>搜索素材</h2>
           <p style={{ color: '#888', fontSize: '14px', margin: '4px 0 0' }}>
-            在 YouTube 和抖音搜索匹配的 B-Roll 视频素材
+            在 {Array.from(selectedPlatforms).map((p) => p === 'youtube' ? 'YouTube' : 'Bilibili').join(' 和 ')} 搜索匹配的 B-Roll 视频素材
           </p>
         </div>
 
         {searchStatus === 'completed' && (
           <div style={{ display: 'flex', gap: '8px' }}>
             <Button onClick={() => selectedMaterialIds.size > 0 ? deselectAll() : selectAllYouTube()}>
-              {selectedMaterialIds.size > 0 ? '取消全选' : '全选 YouTube'}
+              {selectedMaterialIds.size > 0 ? '取消全选' : '全选'}
             </Button>
           </div>
         )}
       </div>
 
-      {searchStatus === 'running' && searchProgress && (
-        <div
-          style={{
-            background: '#1a1a1a',
-            borderRadius: '12px',
-            padding: '20px',
-            border: '1px solid #2d2d2d',
-            marginBottom: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-          }}
-        >
-          <Spin />
-          <div>
-            <div style={{ color: '#fff', fontWeight: 500 }}>
-              正在搜索 ({searchProgress.currentRow + 1}/{searchProgress.totalRows})
+      {searchStatus === 'running' && (() => {
+        const row = searchProgress?.currentRow ?? 0
+        const total = searchProgress?.totalRows ?? 0
+        const doneCount = materials.length
+        const percent = total > 0 ? Math.min(99, Math.round(((row + 0.5) / total) * 100)) : 0
+        return (
+          <Card
+            style={{ background: '#1a1a1a', border: '1px solid #2d2d2d', borderRadius: 12, marginBottom: 20 }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
+              <LoadingOutlined style={{ color: '#4facfe', fontSize: 20 }} spin />
+              <div style={{ flex: 1 }}>
+                <div style={{ color: '#fff', fontWeight: 500 }}>
+                  {searchProgress
+                    ? `正在搜索 (${row + 1}/${total}) · 已完成 ${doneCount} 行`
+                    : '正在启动搜索任务...'}
+                </div>
+                <div style={{ color: '#888', fontSize: 13, marginTop: 2 }}>
+                  {searchProgress
+                    ? `关键词: ${searchProgress.currentKeyword} · 平台: ${searchProgress.currentPlatform}`
+                    : '首次启动 yt-dlp 可能需要几秒钟...'}
+                </div>
+              </div>
             </div>
-            <div style={{ color: '#888', fontSize: '13px' }}>
-              关键词: {searchProgress.currentKeyword} · 平台: {searchProgress.currentPlatform}
+            <Progress
+              percent={percent}
+              status="active"
+              strokeColor={{ '0%': '#4facfe', '100%': '#00f2fe' }}
+              showInfo
+            />
+          </Card>
+        )
+      })()}
+
+      {searchStatus === 'failed' && (
+        <Card style={{ background: '#1a1a1a', border: '1px solid #3a1f1f', borderRadius: 12, marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <ExclamationCircleOutlined style={{ color: '#ff6b6b', fontSize: 24 }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ color: '#fff', fontWeight: 500 }}>搜索任务启动失败</div>
+              <div style={{ color: '#888', fontSize: 13 }}>可能原因：后端重启丢失项目、未勾选关键词行、或 yt-dlp 未安装</div>
             </div>
+            <Button icon={<ReloadOutlined />} onClick={handleStartSearch}>重试</Button>
           </div>
-        </div>
+        </Card>
       )}
 
       <MaterialSelector materials={materials} />
@@ -131,7 +155,7 @@ const SearchPage: React.FC = () => {
       {selectedMaterialIds.size > 0 && (
         <div className="floating-bar">
           <span style={{ color: '#fff' }}>
-            已选择 <span style={{ color: '#4facfe', fontWeight: 600 }}>{selectedMaterialIds.size}</span> 个 YouTube 素材
+            已选择 <span style={{ color: '#4facfe', fontWeight: 600 }}>{selectedMaterialIds.size}</span> 个素材
           </span>
           <Button
             type="primary"

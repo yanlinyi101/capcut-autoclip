@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { message, Empty } from 'antd'
+import { message, Empty, Button } from 'antd'
+import { ArrowRightOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import DownloadProgressList from '../components/DownloadProgress'
 import { startDownload, getDownloadStreamUrl } from '../services/api'
@@ -76,7 +77,7 @@ const DownloadPage: React.FC = () => {
     onAllComplete: (data) => {
       const d = data as DownloadComplete
       setDownloadStatus('completed')
-      setCurrentStep(3)
+      setCurrentStep(4)
       setSseUrl(null)
       message.success(`下载完成: ${d.completed} 成功, ${d.failed} 失败`)
     },
@@ -94,11 +95,18 @@ const DownloadPage: React.FC = () => {
 
   return (
     <div style={{ padding: '0 32px 40px' }}>
-      <div style={{ marginBottom: '20px' }}>
-        <h2 style={{ color: '#fff', fontSize: '20px', margin: 0 }}>下载素材</h2>
-        <p style={{ color: '#888', fontSize: '14px', margin: '4px 0 0' }}>
-          正在下载选中的 {materialIds.length} 个 YouTube 视频素材
-        </p>
+      <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h2 style={{ color: '#fff', fontSize: '20px', margin: 0 }}>下载素材</h2>
+          <p style={{ color: '#888', fontSize: '14px', margin: '4px 0 0' }}>
+            正在下载选中的 {materialIds.length} 个 YouTube 视频素材
+          </p>
+        </div>
+        {downloadStatus === 'completed' && (
+          <Button type="primary" onClick={() => navigate('/edit')} icon={<ArrowRightOutlined />}>
+            下一步：自动剪辑
+          </Button>
+        )}
       </div>
 
       <DownloadProgressList downloads={downloads} totalItems={materialIds.length} />

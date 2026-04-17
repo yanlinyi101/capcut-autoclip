@@ -52,7 +52,10 @@ async def download_materials(
             "--merge-output-format", "mp4",
             "--no-playlist",
             "--newline",
+            "--socket-timeout", "30",
         ]
+        if settings.proxy_url:
+            cmd += ["--proxy", settings.proxy_url]
 
         env = os.environ.copy()
         env["PYTHONIOENCODING"] = "utf-8"

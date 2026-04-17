@@ -7,6 +7,8 @@ class KeywordRow(BaseModel):
     end_time: str
     text: str
     keywords: list[str]
+    needs_broll: bool = False
+    broll_reason: str = ""
 
 
 class ExtractResponse(BaseModel):

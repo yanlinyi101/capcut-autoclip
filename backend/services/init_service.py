@@ -41,9 +41,15 @@ def init_project(project_path: str) -> dict:
         "current_step": 1,
         "created_at": datetime.now(),
         "keywords": [],
+        "selected_row_indices": [],
         "materials": [],
         "material_index": {},
         "downloads": {},
+        "broll_segments": [],
+        "keyframes": {},
+        "edit_plan": [],
+        "clips": [],
+        "canvas": {"width": 1920, "height": 1080},
     }
     _projects[project_id] = project
     return project

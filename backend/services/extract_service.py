@@ -49,8 +49,12 @@ def extract_keywords(text: str) -> list[str]:
     return keywords
 
 
-def extract_from_srt(srt_file: str) -> list[dict]:
-    """Parse SRT subtitle file and extract keywords with timestamps."""
+def extract_from_srt(srt_file: str, use_llm: bool = True) -> list[dict]:
+    """Parse SRT subtitle file and extract keywords with timestamps.
+
+    If use_llm is True, runs DeepSeek LLM to annotate each row with
+    `needs_broll` / `broll_reason`. Falls back to rule-based on failure.
+    """
     subs = pysrt.open(srt_file, encoding="utf-8")
     timeline_data = []
     idx = 0
@@ -71,8 +75,20 @@ def extract_from_srt(srt_file: str) -> list[dict]:
                     "end_time": end,
                     "text": text,
                     "keywords": kws,
+                    "needs_broll": False,
+                    "broll_reason": "",
                 }
             )
             idx += 1
+
+    if use_llm and timeline_data:
+        from backend.services.llm_service import analyze_broll_need
+        annotations = analyze_broll_need(timeline_data)
+        by_index = {a["index"]: a for a in annotations}
+        for row in timeline_data:
+            ann = by_index.get(row["index"])
+            if ann:
+                row["needs_broll"] = bool(ann.get("needs_broll", False))
+                row["broll_reason"] = str(ann.get("reason", ""))
 
     return timeline_data

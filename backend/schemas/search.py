@@ -1,3 +1,4 @@
+from typing import Literal
 from pydantic import BaseModel
 
 
@@ -15,12 +16,13 @@ class SearchGroupResult(BaseModel):
     start_time: str
     original_text: str
     youtube_results: list[MaterialItem]
-    douyin_results: list[MaterialItem]
+    bilibili_results: list[MaterialItem]
 
 
 class SearchRequest(BaseModel):
-    max_rows: int = 10
+    max_rows: int = 0  # deprecated — ignored; scope is controlled by row selection on the Extract page
     results_per_platform: int = 3
+    platforms: list[Literal["youtube", "bilibili"]] = ["youtube", "bilibili"]
 
 
 class SearchTaskResponse(BaseModel):
@@ -32,4 +34,4 @@ class SearchTaskResponse(BaseModel):
 class MaterialsResponse(BaseModel):
     materials: list[SearchGroupResult]
     total_youtube: int
-    total_douyin: int
+    total_bilibili: int

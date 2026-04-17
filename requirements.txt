@@ -1,6 +1,7 @@
 fastapi>=0.115.0
 uvicorn>=0.30.0
 sse-starlette>=2.0.0
+python-multipart>=0.0.9
 pydantic-settings>=2.0.0
 jieba>=0.42.1
 yt-dlp>=2023.1.1
@@ -8,3 +9,6 @@ duckduckgo-search>=4.0.0
 pysrt>=1.1.2
 bcut-asr @ git+https://github.com/SocialSisterYi/bcut-asr.git
 openai-whisper>=20231117
+ffmpeg-python>=0.2.0
+scenedetect[opencv]>=0.6.3
+openai>=1.50.0

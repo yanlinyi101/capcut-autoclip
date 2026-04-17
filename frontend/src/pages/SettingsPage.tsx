@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { Form, Input, InputNumber, Button, message, Card, Spin, Divider, Select } from 'antd'
-import { SaveOutlined, ToolOutlined, FolderOpenOutlined, ScanOutlined, AudioOutlined } from '@ant-design/icons'
+import { Form, Input, InputNumber, Button, message, Card, Spin, Divider, Select, Switch } from 'antd'
+import { SaveOutlined, ToolOutlined, FolderOpenOutlined, ScanOutlined, AudioOutlined, RobotOutlined } from '@ant-design/icons'
 import { getSettings, updateSettings } from '../services/api'
 import type { AppSettings } from '../types/pipeline'
 
@@ -115,6 +115,14 @@ const SettingsPage: React.FC = () => {
             <Input placeholder="yt-dlp" />
           </Form.Item>
 
+          <Form.Item
+            label="代理地址（可选）"
+            name="proxy_url"
+            extra="国内访问 YouTube 必填。例：http://127.0.0.1:7890 或 socks5://127.0.0.1:7891。留空则直连。"
+          >
+            <Input placeholder="http://127.0.0.1:7890" />
+          </Form.Item>
+
           <div style={{ display: 'flex', gap: '16px' }}>
             <Form.Item label="每次搜索处理行数" name="max_search_rows" style={{ flex: 1 }}>
               <InputNumber min={1} max={100} style={{ width: '100%' }} />
@@ -193,6 +201,65 @@ const SettingsPage: React.FC = () => {
             <Form.Item label="ffmpeg 路径" name="ffmpeg_path" style={{ flex: 1 }}>
               <Input placeholder="ffmpeg" />
             </Form.Item>
+          </div>
+        </Card>
+
+        {/* LLM section */}
+        <Card
+          title={
+            <span>
+              <RobotOutlined style={{ marginRight: '8px', color: '#4facfe' }} />
+              AI 分析 (DeepSeek / 兼容 OpenAI)
+            </span>
+          }
+          style={{
+            background: '#1a1a1a',
+            border: '1px solid #2d2d2d',
+            borderRadius: '16px',
+            marginTop: '20px',
+          }}
+          headStyle={{
+            background: '#1a1a1a',
+            borderBottom: '1px solid #2d2d2d',
+            color: '#fff',
+          }}
+        >
+          <Form.Item
+            label="启用 AI 分析 B-Roll 需求"
+            name="llm_enabled"
+            valuePropName="checked"
+            extra="关闭后将回退到基于词性的规则判定"
+          >
+            <Switch />
+          </Form.Item>
+
+          <Form.Item
+            label="API Key"
+            name="deepseek_api_key"
+            extra="DeepSeek 的 API Key (sk-...)，留空则使用规则降级"
+          >
+            <Input.Password placeholder="sk-..." autoComplete="off" />
+          </Form.Item>
+
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <Form.Item label="Base URL" name="deepseek_base_url" style={{ flex: 1 }}>
+              <Input placeholder="https://api.deepseek.com" />
+            </Form.Item>
+            <Form.Item label="模型" name="deepseek_model" style={{ flex: 1 }}>
+              <Select
+                showSearch
+                options={[
+                  { label: 'deepseek-chat (通用)', value: 'deepseek-chat' },
+                  { label: 'deepseek-reasoner (推理)', value: 'deepseek-reasoner' },
+                  { label: 'gpt-4o-mini (OpenAI)', value: 'gpt-4o-mini' },
+                  { label: 'gpt-4o (OpenAI)', value: 'gpt-4o' },
+                ]}
+              />
+            </Form.Item>
+          </div>
+
+          <div style={{ color: '#888', fontSize: '12px' }}>
+            兼容 OpenAI 协议的其它模型（如 Moonshot / 通义千问）只需改 Base URL + 模型名即可。
           </div>
         </Card>
 

@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     whisper_model: str = "base"
     language: str = "zh"
     ffmpeg_path: str = "ffmpeg"
+    deepseek_api_key: str = ""
+    deepseek_base_url: str = "https://api.deepseek.com"
+    deepseek_model: str = "deepseek-chat"
+    llm_enabled: bool = True
+    proxy_url: str = ""
 
     class Config:
         env_file = ".env"

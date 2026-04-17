@@ -31,7 +31,16 @@ const DownloadProgressList: React.FC<Props> = ({ downloads, totalItems }) => {
   const items = Array.from(downloads.values())
   const completed = items.filter((d) => d.status === 'completed').length
   const failed = items.filter((d) => d.status === 'failed').length
-  const overallPercent = totalItems > 0 ? Math.round(((completed + failed) / totalItems) * 100) : 0
+  const downloading = items.filter((d) => d.status === 'downloading').length
+  const waiting = items.filter((d) => d.status === 'waiting').length
+  const partial = items
+    .filter((d) => d.status === 'downloading')
+    .reduce((s, d) => s + (d.percent || 0) / 100, 0)
+  const overallPercent =
+    totalItems > 0
+      ? Math.min(100, Math.round(((completed + failed + partial) / totalItems) * 100))
+      : 0
+  const allDone = completed + failed >= totalItems && totalItems > 0
 
   return (
     <div>
@@ -48,15 +57,18 @@ const DownloadProgressList: React.FC<Props> = ({ downloads, totalItems }) => {
           <span style={{ color: '#fff', fontWeight: 500 }}>
             总进度: {completed + failed}/{totalItems}
           </span>
-          <span style={{ color: '#888' }}>
-            {completed} 成功 · {failed} 失败
+          <span style={{ color: '#888', fontSize: 13 }}>
+            {completed > 0 && <span style={{ color: '#52c41a', marginRight: 10 }}>✓ {completed} 成功</span>}
+            {downloading > 0 && <span style={{ color: '#4facfe', marginRight: 10 }}>⇣ {downloading} 下载中</span>}
+            {waiting > 0 && <span style={{ color: '#999', marginRight: 10 }}>⏱ {waiting} 等待</span>}
+            {failed > 0 && <span style={{ color: '#ff6b6b' }}>✗ {failed} 失败</span>}
           </span>
         </div>
         <Progress
           percent={overallPercent}
-          strokeColor={{ from: '#4facfe', to: '#00f2fe' }}
+          status={allDone ? (failed > 0 ? 'exception' : 'success') : 'active'}
+          strokeColor={{ '0%': '#4facfe', '100%': '#00f2fe' }}
           trailColor="#2d2d2d"
-          showInfo={false}
         />
       </div>
 
