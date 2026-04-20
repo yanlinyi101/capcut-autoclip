@@ -15,6 +15,8 @@
 
 ## 界面预览
 
+> 📖 **完整小白教程**：[docs/使用教程.md](docs/使用教程.md)
+
 | 设置页 | 关键词时间轴 | 搜索结果 |
 |---|---|---|
 | ![设置页](docs/screenshots/settings.png) | ![关键词表格](docs/screenshots/keywords-table.png) | ![搜索结果](docs/screenshots/search-results.png) |
